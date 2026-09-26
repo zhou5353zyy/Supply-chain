@@ -61,10 +61,15 @@ def main():
                "annual_value", "cum_pct", "ABC_class"]].to_string(), "\n")
 
     # ---- 2) Safety stock ------------------------------------------------
-    # Simplified lead-time demand model:
-    #   SS = Z * (demand std per period) * sqrt(lead time)
-    # Teaching approximation: treat monthly demand std as 30% of demand.
-    dfc["safety_stock"] = (Z * dfc["月销量"] * 0.3 * (LEAD_TIME ** 0.5)).round(0)
+    # Transparent teaching model (Option A):
+    #   SS = Z * monthly demand * lead time (months) * demand variability
+    #   = 1.28 * demand * 0.5 * 0.3  ->  buffer covering demand fluctuation
+    #     within one lead time at a 90% service level.
+    # This strips the sqrt back out of the formula so the units read clearly:
+    #   demand that actually occurs *during* the lead time, scaled by the
+    #   service-level factor (Z) and a variability allowance (0.3 / 30%).
+    VARIABILITY = 0.3  # allowance for demand fluctuation within the lead time
+    dfc["safety_stock"] = (Z * LEAD_TIME * VARIABILITY * dfc["月销量"]).round(0)
 
     print("=" * 68)
     print("2) SAFETY STOCK (90% service level)")
@@ -83,12 +88,14 @@ def main():
     print(dfc[["物料号", "物料名", "月销量", "采购成本", "EOQ"]].to_string(), "\n")
 
     # ---- 4) Replenishment kanban ----------------------------------------
-    dfc["stock_turn"] = (dfc["库存量"] / dfc["月销量"]).round(2)
+    # stock coverage = months of demand covered by current stock (a days-of-inventory
+    # style gauge, NOT the annual inventory-turnover ratio).
+    dfc["stock_coverage"] = (dfc["库存量"] / dfc["月销量"]).round(2)
 
     def status(row):
         if row["库存量"] < row["safety_stock"]:
             return "URGENT restock"
-        if row["stock_turn"] >= 2:
+        if row["stock_coverage"] >= 2:
             return "OVERSTOCK risk"
         return "OK"
     dfc["status"] = dfc.apply(status, axis=1)
@@ -97,7 +104,7 @@ def main():
     print("4) REPLENISHMENT KANBAN (final result)")
     print("=" * 68)
     out = dfc[["物料号", "物料名", "ABC_class", "库存量",
-               "safety_stock", "stock_turn", "EOQ", "status"]]
+               "safety_stock", "stock_coverage", "EOQ", "status"]]
     print(out.to_string(), "\n")
 
     # ---- Export results -------------------------------------------------
