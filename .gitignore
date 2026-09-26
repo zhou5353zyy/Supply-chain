@@ -1,0 +1,23 @@
+# Python cache / build artifacts
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+env/
+
+# IDE / OS noise
+.idea/
+.vscode/
+.DS_Store
+Thumbs.db
+
+# Sensitive / local files — never commit these
+.env
+*.key
+*.pem
+secrets.*
+config.local.*
+
+# Generated notebooks checkpoints
+.ipynb_checkpoints/
